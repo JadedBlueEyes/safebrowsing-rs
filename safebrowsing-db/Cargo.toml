@@ -1,0 +1,33 @@
+[package]
+name = "safebrowsing-db"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Database interface and implementations for Google Safe Browsing API"
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+tokio.workspace = true
+async-trait.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+dashmap.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+bytes.workspace = true
+safebrowsing-proto.workspace = true
+safebrowsing-hash.workspace = true
+safebrowsing-api.workspace = true
+flate2.workspace = true
+rand.workspace = true
+hex = "0.4"
+
+[dev-dependencies]
+tokio-test.workspace = true
+tempfile.workspace = true
+tracing-subscriber.workspace = true
+prost = "0.12"
+hex = "0.4"

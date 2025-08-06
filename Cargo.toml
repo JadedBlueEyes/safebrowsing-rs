@@ -1,0 +1,61 @@
+[workspace]
+resolver = "3"
+members = [
+    "safebrowsing",
+    "safebrowsing-api",
+    "safebrowsing-db",
+    "safebrowsing-db-redb",
+    "safebrowsing-hash",
+    "safebrowsing-proto",
+    "safebrowsing-url",
+    "sblookup",
+    "sbserver"
+]
+
+[workspace.package]
+version = "0.1.0"
+authors = ["Jade <jade@ellis.link>"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Rust implementation of Google Safe Browsing Update API (v4)"
+repository = "https://github.com/JadedBlueEyes/safebrowsing-rs"
+keywords = ["safebrowsing", "security", "google", "api"]
+categories = ["api-bindings", "web-programming"]
+
+[workspace.dependencies]
+tokio = { version = "1.0", features = ["full"] }
+reqwest = { version = "0.11", features = ["json", "gzip"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+sha2 = "0.10"
+url = "2.5"
+prost = "0.12"
+prost-types = "0.12"
+bytes = "1.5"
+async-trait = "0.1"
+dashmap = "5.5"
+regex = "1.10"
+idna = "0.5"
+flate2 = "1.0"
+rand = "0.8"
+clap = { version = "4.4", features = ["derive"] }
+
+# Internal workspace dependencies
+safebrowsing-api = { path = "safebrowsing-api", version = "0.1.0" }
+safebrowsing-db = { path = "safebrowsing-db", version = "0.1.0" }
+safebrowsing-db-redb = { path = "safebrowsing-db-redb", version = "0.1.0" }
+safebrowsing-hash = { path = "safebrowsing-hash", version = "0.1.0" }
+safebrowsing-proto = { path = "safebrowsing-proto", version = "0.1.0" }
+safebrowsing-url = { path = "safebrowsing-url", version = "0.1.0" }
+
+# Development dependencies
+tokio-test = "0.4"
+mockito = "1.2"
+tempfile = "3.8"
+
+
+[profile.dev.package.redb]
+opt-level = 3
