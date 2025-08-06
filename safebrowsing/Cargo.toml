@@ -1,0 +1,46 @@
+[package]
+name = "safebrowsing"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+description.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+tokio.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+sha2.workspace = true
+url.workspace = true
+prost.workspace = true
+prost-types.workspace = true
+bytes.workspace = true
+async-trait.workspace = true
+dashmap.workspace = true
+regex.workspace = true
+idna.workspace = true
+flate2.workspace = true
+rand.workspace = true
+
+[dev-dependencies]
+tokio-test = "0.4"
+tracing-subscriber.workspace = true
+mockito = "1.2"
+tempfile = "3.8"
+
+[build-dependencies]
+prost-build = "0.12"
+
+[[bin]]
+name = "sblookup"
+path = "src/bin/sblookup.rs"
+
+[[bin]]
+name = "sbserver"
+path = "src/bin/sbserver.rs"
