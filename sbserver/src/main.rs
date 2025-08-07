@@ -3,8 +3,8 @@
 //! This server provides a local proxy for Safe Browsing API lookups and includes
 //! an URL redirector with interstitial warning pages.
 
-use clap::Parser;
-use safebrowsing::{Config, SafeBrowser};
+use clap::{Parser, ValueEnum};
+use safebrowsing::{Config, DatabaseType, SafeBrowser};
 use safebrowsing_api::{PlatformType, ThreatDescriptor, ThreatEntryType, ThreatType};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
@@ -31,6 +31,10 @@ struct Cli {
     #[arg(short, long)]
     verbose: bool,
 
+    /// Database type to use
+    #[arg(long, value_enum, default_value_t = DatabaseTypeArg::Redb)]
+    database_type: DatabaseTypeArg,
+
     /// Update period in seconds for threat lists
     #[arg(long, default_value_t = 1800)]
     update_period: u64,
@@ -42,6 +46,26 @@ struct Cli {
     /// Client version for API requests
     #[arg(long, default_value = env!("CARGO_PKG_VERSION"))]
     client_version: String,
+}
+
+#[derive(Clone, Debug, ValueEnum)]
+enum DatabaseTypeArg {
+    /// Use in-memory database
+    InMemory,
+    /// Use thread-safe concurrent database
+    Concurrent,
+    /// Use persistent redb-based database
+    Redb,
+}
+
+impl From<DatabaseTypeArg> for DatabaseType {
+    fn from(arg: DatabaseTypeArg) -> Self {
+        match arg {
+            DatabaseTypeArg::InMemory => DatabaseType::InMemory,
+            DatabaseTypeArg::Concurrent => DatabaseType::Concurrent,
+            DatabaseTypeArg::Redb => DatabaseType::Redb,
+        }
+    }
 }
 
 /// Request body for threat matches API
@@ -98,6 +122,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         api_key: cli.api_key,
         client_id: cli.client_id,
         client_version: cli.client_version,
+        database_type: Some(cli.database_type.into()),
         update_period: Duration::from_secs(cli.update_period),
         threat_lists: vec![
             ThreatDescriptor {

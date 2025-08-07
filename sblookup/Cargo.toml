@@ -21,7 +21,7 @@ tracing-subscriber.workspace = true
 clap = { version = "4.4", features = ["derive", "env"] }
 
 # Safe browsing crates
-safebrowsing = { path = "../safebrowsing", features = ["redb"] }
+safebrowsing = { path = "../safebrowsing", features = ["redb"], version = "0.1.0"}
 safebrowsing-api.workspace = true
 
 [dev-dependencies]
