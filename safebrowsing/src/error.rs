@@ -18,7 +18,7 @@ pub enum Error {
 
     /// Database operation errors
     #[error("Database error: {0}")]
-    Database(#[from] DatabaseError),
+    Database(#[from] safebrowsing_db::DatabaseError),
 
     /// URL parsing and validation errors
     #[error("Invalid URL: {0}")]
@@ -149,6 +149,47 @@ pub enum DatabaseError {
     ConcurrentAccess(String),
 }
 
+impl From<safebrowsing_api::Error> for Error {
+    fn from(err: safebrowsing_api::Error) -> Self {
+        match err {
+            safebrowsing_api::Error::Api(api_err) => Error::Api(ApiError::from(api_err)),
+            safebrowsing_api::Error::Http(http_err) => Error::Http(http_err),
+            safebrowsing_api::Error::Protobuf(msg) => Error::Protobuf(prost::DecodeError::new(msg)),
+            safebrowsing_api::Error::Configuration(msg) => Error::Configuration(msg),
+        }
+    }
+}
+
+impl From<safebrowsing_url::UrlError> for Error {
+    fn from(err: safebrowsing_url::UrlError) -> Self {
+        match err {
+            safebrowsing_url::UrlError::Parse(parse_err) => Error::UrlParse(parse_err),
+            safebrowsing_url::UrlError::InvalidHost(msg) => Error::InvalidUrl(msg),
+            safebrowsing_url::UrlError::Idna(msg) => {
+                Error::InvalidUrl(format!("IDNA error: {msg}"))
+            }
+            safebrowsing_url::UrlError::InvalidFormat(msg) => Error::InvalidUrl(msg),
+        }
+    }
+}
+
+impl From<safebrowsing_api::ApiError> for ApiError {
+    fn from(err: safebrowsing_api::ApiError) -> Self {
+        match err {
+            safebrowsing_api::ApiError::BadRequest(msg) => ApiError::BadRequest(msg),
+            safebrowsing_api::ApiError::Authentication(msg) => ApiError::Authentication(msg),
+            safebrowsing_api::ApiError::QuotaExceeded => ApiError::QuotaExceeded,
+            safebrowsing_api::ApiError::RateLimit { retry_after } => {
+                ApiError::RateLimit { retry_after }
+            }
+            safebrowsing_api::ApiError::ServerUnavailable(msg) => ApiError::ServerUnavailable(msg),
+            safebrowsing_api::ApiError::HttpStatus { status, message } => {
+                ApiError::HttpStatus { status, message }
+            }
+        }
+    }
+}
+
 impl From<&str> for Error {
     fn from(msg: &str) -> Self {
         Error::Internal(msg.to_string())
@@ -197,7 +238,7 @@ impl Error {
     pub fn is_retryable(&self) -> bool {
         match self {
             Error::Api(api_error) => api_error.is_retryable(),
-            Error::Database(DatabaseError::Stale { .. }) => true,
+            Error::Database(safebrowsing_db::DatabaseError::Stale(_)) => true,
             Error::Http(req_error) => {
                 // Network timeouts and connection errors are retryable
                 req_error.is_timeout() || req_error.is_connect()
@@ -209,16 +250,16 @@ impl Error {
 
     /// Returns true if this is a permanent error that shouldn't be retried
     pub fn is_permanent(&self) -> bool {
-        match self {
-            Error::Configuration(_) => true,
-            Error::InvalidUrl(_) => true,
-            Error::Api(ApiError::Authentication(_)) => true,
-            Error::Api(ApiError::BadRequest(_)) => true,
-            Error::Database(DatabaseError::Corruption(_)) => true,
-            Error::Database(DatabaseError::VersionMismatch { .. }) => true,
-            Error::Validation(_) => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            Error::Configuration(_)
+                | Error::InvalidUrl(_)
+                | Error::Api(ApiError::Authentication(_))
+                | Error::Api(ApiError::BadRequest(_))
+                | Error::Database(safebrowsing_db::DatabaseError::DecodeError(_))
+                | Error::Database(safebrowsing_db::DatabaseError::InvalidChecksum { .. })
+                | Error::Validation(_)
+        )
     }
 
     /// Get a user-friendly error message
@@ -234,9 +275,11 @@ impl Error {
             Error::Api(ApiError::RateLimit { .. }) => {
                 "Rate limited by API, please wait before retrying".to_string()
             }
-            Error::InvalidUrl(url) => format!("Invalid URL format: {}", url),
-            Error::Database(DatabaseError::Stale { .. }) => "Database needs updating".to_string(),
-            Error::Database(DatabaseError::Corruption(_)) => {
+            Error::InvalidUrl(url) => format!("Invalid URL format: {url}"),
+            Error::Database(safebrowsing_db::DatabaseError::Stale(_)) => {
+                "Database needs updating".to_string()
+            }
+            Error::Database(safebrowsing_db::DatabaseError::DecodeError(_)) => {
                 "Database corruption detected, please reset".to_string()
             }
             Error::Timeout(_) => "Operation timed out, please try again".to_string(),

@@ -1,0 +1,29 @@
+[package]
+name = "sbserver"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Safe Browsing proxy server with URL redirector"
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[[bin]]
+name = "sbserver"
+path = "src/main.rs"
+
+[dependencies]
+tokio = { workspace = true, features = ["net", "io-util", "macros", "rt-multi-thread", "sync"] }
+thiserror.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+url.workspace = true
+clap = { version = "4.4", features = ["derive", "env"] }
+urlencoding = "2.1"
+
+# Safe browsing crates
+safebrowsing = { path = "../safebrowsing" }
+safebrowsing-api.workspace = true

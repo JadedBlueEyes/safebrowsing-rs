@@ -1,0 +1,21 @@
+[package]
+name = "safebrowsing-hash"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Hash generation and prefix matching for Google Safe Browsing API"
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+sha2.workspace = true
+bytes.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+dashmap.workspace = true
+serde = { workspace = true, features = ["derive"] }
+
+[dev-dependencies]
+tokio-test.workspace = true

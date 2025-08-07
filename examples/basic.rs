@@ -33,8 +33,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Configure the Safe Browsing client
     let config = Config {
         api_key: api_key.clone(),
-        client_id: "SafeBrowsingRustExample".to_string(),
-        client_version: "1.0.0".to_string(),
+        client_id: env!("CARGO_PKG_NAME").to_string(),
+        client_version: env!("CARGO_PKG_VERSION").to_string(),
         update_period: Duration::from_secs(30 * 60), // 30 minutes
         threat_lists: vec![
             ThreatDescriptor::new(
@@ -86,14 +86,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Check each URL
     for url in &test_urls {
         print!("Checking: {} ... ", url);
-        
+
         match sb.lookup_urls(&[url]).await {
             Ok(results) => {
                 if let Some(threats) = results.get(0) {
                     if threats.is_empty() {
                         println!("✅ SAFE");
                     } else {
-                        println!("⚠️  UNSAFE");
+                        println!("⚠️ UNSAFE");
                         for threat in threats {
                             println!("  └─ Threat: {}", threat.threat_descriptor);
                         }
@@ -104,7 +104,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             Err(e) => {
                 println!("❌ ERROR: {}", e);
-                
+
                 // Demonstrate error handling
                 if e.is_retryable() {
                     println!("  └─ This error is retryable");

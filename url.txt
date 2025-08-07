@@ -1,0 +1,7 @@
+http://testsafebrowsing.appspot.com/apiv4/ANY_PLATFORM/SOCIAL_ENGINEERING/URL/
+http://example.com
+https://console.cloud.google.com
+http://testsafebrowsing.appspot.com/apiv4/ANY_PLATFORM/MALWARE/URL/
+http://testsafebrowsing.appspot.com/apiv4/ANY_PLATFORM/UNWANTED_SOFTWARE/URL/
+http://testsafebrowsing.appspot.com/apiv4/ANY_PLATFORM/SOCIAL_ENGINEERING/URL/
+http://www.google.com/

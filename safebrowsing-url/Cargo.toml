@@ -1,0 +1,21 @@
+[package]
+name = "safebrowsing-url"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "URL processing and canonicalization for Google Safe Browsing API"
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+url.workspace = true
+regex.workspace = true
+idna.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+safebrowsing-hash.workspace = true
+
+[dev-dependencies]
+tokio-test.workspace = true

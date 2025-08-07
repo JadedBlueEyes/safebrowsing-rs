@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 // Re-export protobuf types for convenience
-pub use crate::proto::safebrowsing_proto;
+pub use safebrowsing_proto;
 
 /// Types of threats that can be detected
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

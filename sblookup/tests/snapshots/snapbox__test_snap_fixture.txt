@@ -1,0 +1,16 @@
+[2m[TIME][0m [32m INFO[0m [2msblookup[0m[2m:[0m Initializing Safe Browser...
+[2m[TIME][0m [32m INFO[0m [2msafebrowsing_db_redb[0m[2m:[0m Creating RedbDatabase at "[DATABASE]"
+[2m[TIME][0m [32m INFO[0m [2msafebrowsing_db_redb[0m[2m:[0m Creating new database at "[DATABASE]"
+[2m[TIME][0m [32m INFO[0m [2msafebrowsing_db_redb[0m[2m:[0m Initializing RedbDatabase at "[DATABASE]"
+[2m[TIME][0m [32m INFO[0m [2msafebrowsing_db_redb[0m[2m:[0m RedbDatabase initialization completed
+[2m[TIME][0m [32m INFO[0m [2msblookup[0m[2m:[0m SafeBrowser::new completed in[DURATION][2m[TIME][0m [32m INFO[0m [2msblookup[0m[2m:[0m Waiting for database to be ready...
+[2m[TIME][0m [32m INFO[0m [2msafebrowsing[0m[2m:[0m Database update completed successfully
+[2m[TIME][0m [32m INFO[0m [2msblookup[0m[2m:[0m wait_until_ready completed in[DURATION][2m[TIME][0m [32m INFO[0m [2msblookup[0m[2m:[0m Safe Browser ready, starting URL checks
+[2m[TIME][0m [32m INFO[0m [2msblookup[0m[2m:[0m ⚠️ UNSAFE: http://testsafebrowsing.appspot.com/apiv4/ANY_PLATFORM/SOCIAL_ENGINEERING/URL/ SOCIAL_ENGINEERING (ANY_PLATFORM)
+[2m[TIME][0m [32m INFO[0m [2msblookup[0m[2m:[0m ✅ SAFE: http://example.com
+[2m[TIME][0m [32m INFO[0m [2msblookup[0m[2m:[0m ✅ SAFE: https://console.cloud.google.com
+[2m[TIME][0m [32m INFO[0m [2msblookup[0m[2m:[0m ⚠️ UNSAFE: http://testsafebrowsing.appspot.com/apiv4/ANY_PLATFORM/MALWARE/URL/ MALWARE (ANY_PLATFORM)
+[2m[TIME][0m [32m INFO[0m [2msblookup[0m[2m:[0m ⚠️ UNSAFE: http://testsafebrowsing.appspot.com/apiv4/ANY_PLATFORM/UNWANTED_SOFTWARE/URL/ UNWANTED_SOFTWARE (ANY_PLATFORM)
+[2m[TIME][0m [32m INFO[0m [2msblookup[0m[2m:[0m ⚠️ UNSAFE: http://testsafebrowsing.appspot.com/apiv4/ANY_PLATFORM/SOCIAL_ENGINEERING/URL/ SOCIAL_ENGINEERING (ANY_PLATFORM)
+[2m[TIME][0m [32m INFO[0m [2msblookup[0m[2m:[0m ✅ SAFE: http://www.google.com/
+[2m[TIME][0m [32m INFO[0m [2msafebrowsing[0m[2m:[0m Update task shutting down

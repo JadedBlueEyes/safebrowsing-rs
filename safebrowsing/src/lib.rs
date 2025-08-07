@@ -14,7 +14,7 @@
 //! ## Example
 //!
 //! ```rust,no_run
-//! use safebrowsing::{SafeBrowser, Config, ThreatType, PlatformType, ThreatEntryType};
+//! use safebrowsing::{SafeBrowser, Config, ThreatDescriptor, ThreatType, PlatformType, ThreatEntryType};
 //! use std::time::Duration;
 //!
 //! #[tokio::main]
@@ -25,8 +25,16 @@
 //!         client_version: "1.0.0".to_string(),
 //!         update_period: Duration::from_secs(1800), // 30 minutes
 //!         threat_lists: vec![
-//!             (ThreatType::Malware, PlatformType::AnyPlatform, ThreatEntryType::Url),
-//!             (ThreatType::SocialEngineering, PlatformType::AnyPlatform, ThreatEntryType::Url),
+//!             ThreatDescriptor {
+//!                 threat_type: ThreatType::Malware,
+//!                 platform_type: PlatformType::AnyPlatform,
+//!                 threat_entry_type: ThreatEntryType::Url,
+//!             },
+//!             ThreatDescriptor {
+//!                 threat_type: ThreatType::SocialEngineering,
+//!                 platform_type: PlatformType::AnyPlatform,
+//!                 threat_entry_type: ThreatEntryType::Url,
+//!             },
 //!         ],
 //!         ..Default::default()
 //!     };
@@ -50,14 +58,18 @@
 //! }
 //! ```
 
-pub mod api;
+// Re-export crates from workspace
+pub use safebrowsing_api;
+pub use safebrowsing_db;
+pub use safebrowsing_hash;
+pub use safebrowsing_proto;
+pub use safebrowsing_url;
+
+// Internal modules
 pub mod cache;
 pub mod database;
 pub mod error;
-pub mod hash;
-pub mod proto;
 pub mod types;
-pub mod urls;
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -67,13 +79,14 @@ use tokio::time::interval;
 use tracing::{debug, error, info, warn};
 
 // Re-export commonly used types
-pub use crate::api::SafeBrowsingApi;
 pub use crate::cache::Cache;
-pub use crate::database::{Database, InMemoryDatabase};
 pub use crate::error::{Error, Result};
-pub use crate::hash::{HashPrefix, HashSet};
-pub use crate::types::*;
-pub use crate::urls::{canonicalize_url, generate_patterns, validate_url};
+pub use safebrowsing_api::{
+    PlatformType, SafeBrowsingApi, ThreatDescriptor, ThreatEntryType, ThreatType, URLThreat,
+};
+pub use safebrowsing_db::{ConcurrentDatabase, Database, DatabaseStats, InMemoryDatabase};
+pub use safebrowsing_hash::{HashPrefix, HashSet};
+pub use safebrowsing_url::{canonicalize_url, generate_patterns, validate_url};
 
 /// Default Safe Browsing API server URL
 pub const DEFAULT_SERVER_URL: &str = "https://safebrowsing.googleapis.com";
@@ -82,10 +95,10 @@ pub const DEFAULT_SERVER_URL: &str = "https://safebrowsing.googleapis.com";
 pub const DEFAULT_UPDATE_PERIOD: Duration = Duration::from_secs(30 * 60);
 
 /// Default client ID
-pub const DEFAULT_CLIENT_ID: &str = "RustSafeBrowsing";
+pub const DEFAULT_CLIENT_ID: &str = env!("CARGO_PKG_NAME");
 
 /// Default client version
-pub const DEFAULT_CLIENT_VERSION: &str = "1.0.0";
+pub const DEFAULT_CLIENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Default request timeout
 pub const DEFAULT_REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
@@ -114,8 +127,26 @@ pub struct Config {
     /// Request timeout for API calls
     pub request_timeout: Duration,
 
-    /// List of threat types to track
+    /// List of threat descriptors to track
     pub threat_lists: Vec<ThreatDescriptor>,
+
+    /// Database implementation to use
+    /// If None, defaults to InMemoryDatabase
+    pub database_type: Option<DatabaseType>,
+}
+
+/// Type of database to use
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DatabaseType {
+    /// In-memory database (fastest but uses more memory)
+    InMemory,
+
+    /// Thread-safe in-memory database
+    Concurrent,
+
+    /// Persistent redb-based database (requires "redb" feature)
+    #[cfg(feature = "redb")]
+    Redb,
 }
 
 impl Default for Config {
@@ -145,6 +176,7 @@ impl Default for Config {
                     threat_entry_type: ThreatEntryType::Url,
                 },
             ],
+            database_type: None,
         }
     }
 }
@@ -172,7 +204,7 @@ pub struct Stats {
 pub struct SafeBrowser {
     config: Config,
     api: SafeBrowsingApi,
-    database: Arc<RwLock<dyn Database + Send + Sync>>,
+    database: Arc<dyn Database + Send + Sync>,
     cache: Arc<Mutex<Cache>>,
     stats: Arc<Mutex<Stats>>,
     last_update: Arc<RwLock<Option<Instant>>>,
@@ -183,19 +215,53 @@ pub struct SafeBrowser {
 impl SafeBrowser {
     /// Create a new Safe Browsing client with the given configuration
     pub async fn new(config: Config) -> Result<Self> {
-        Self::with_database(config, Arc::new(RwLock::new(InMemoryDatabase::new()))).await
+        // Choose database implementation based on config
+        let database = match config.database_type.unwrap_or(DatabaseType::InMemory) {
+            DatabaseType::InMemory => {
+                Arc::new(InMemoryDatabase::new()) as Arc<dyn Database + Send + Sync>
+            }
+            DatabaseType::Concurrent => {
+                Arc::new(ConcurrentDatabase::new()) as Arc<dyn Database + Send + Sync>
+            }
+            #[cfg(feature = "redb")]
+            DatabaseType::Redb => {
+                use crate::database::RedbDatabase;
+                let db_path = RedbDatabase::default_path().map_err(|e| {
+                    Error::Configuration(format!("Failed to get default database path: {}", e))
+                })?;
+                let db = RedbDatabase::new(db_path).map_err(|e| {
+                    Error::Configuration(format!("Failed to create redb database: {}", e))
+                })?;
+                db.init().await.map_err(|e| {
+                    Error::Configuration(format!("Failed to initialize redb database: {}", e))
+                })?;
+                Arc::new(db) as Arc<dyn Database + Send + Sync>
+            }
+        };
+
+        Self::with_database(config, database).await
     }
 
     /// Create a new Safe Browsing client with a custom database backend
     pub async fn with_database(
         config: Config,
-        database: Arc<RwLock<dyn Database + Send + Sync>>,
+        database: Arc<dyn Database + Send + Sync>,
     ) -> Result<Self> {
         if config.api_key.is_empty() {
             return Err(Error::Configuration("API key is required".to_string()));
         }
 
-        let api = SafeBrowsingApi::new(&config)?;
+        // Create API client
+        let api_config = safebrowsing_api::ApiConfig {
+            api_key: config.api_key.clone(),
+            client_id: config.client_id.clone(),
+            client_version: config.client_version.clone(),
+            base_url: config.server_url.clone(),
+            proxy_url: config.proxy_url.clone(),
+            request_timeout: config.request_timeout,
+        };
+        let api = SafeBrowsingApi::new(&api_config)?;
+
         let cache = Arc::new(Mutex::new(Cache::new()));
         let stats = Arc::new(Mutex::new(Stats::default()));
         let last_update = Arc::new(RwLock::new(None));
@@ -223,11 +289,8 @@ impl SafeBrowser {
         let start = Instant::now();
 
         while start.elapsed() < timeout {
-            {
-                let db = self.database.read().await;
-                if db.is_ready().await? {
-                    return Ok(());
-                }
+            if self.database.is_ready().await? {
+                return Ok(());
             }
 
             tokio::time::sleep(Duration::from_millis(100)).await;
@@ -275,19 +338,27 @@ impl SafeBrowser {
 
     /// Check if the database is healthy and up-to-date
     pub async fn status(&self) -> Result<()> {
-        let db = self.database.read().await;
-        db.status().await
+        match self.database.status().await {
+            Ok(()) => Ok(()),
+            Err(err) => Err(Error::Database(err)),
+        }
     }
 
     /// Manually trigger a database update
     pub async fn update(&self) -> Result<()> {
-        let mut db = self.database.write().await;
-        db.update(&self.api, &self.config.threat_lists).await?;
+        self.database
+            .update(&self.api, &self.config.threat_lists)
+            .await?;
 
         let mut last_update = self.last_update.write().await;
         *last_update = Some(Instant::now());
 
         Ok(())
+    }
+
+    /// Get database statistics
+    pub async fn database_stats(&self) -> Result<DatabaseStats> {
+        Ok(self.database.stats().await)
     }
 
     /// Shutdown the Safe Browsing client and cleanup resources
@@ -298,7 +369,7 @@ impl SafeBrowser {
 
         if let Some(task) = self.update_task.take() {
             task.await
-                .map_err(|e| Error::Internal(format!("Update task error: {}", e)))?;
+                .map_err(|e| Error::Internal(format!("Update task error: {e}")))?;
         }
 
         Ok(())
@@ -307,6 +378,8 @@ impl SafeBrowser {
     // Private helper methods
 
     async fn lookup_pattern(&self, pattern: &str) -> Result<Vec<URLThreat>> {
+        // Instrumentation: start timing lookup_pattern
+        let lookup_pattern_start = Instant::now();
         let hash = HashPrefix::from_pattern(pattern);
 
         // First check the cache
@@ -315,34 +388,49 @@ impl SafeBrowser {
             if let Some(result) = cache.lookup(&hash) {
                 let mut stats = self.stats.lock().await;
                 stats.queries_by_cache += 1;
+                // Instrumentation: log lookup_pattern duration for cache-hit
+                debug!(
+                    "lookup_pattern (cache) for '{}' completed in {:?}",
+                    pattern,
+                    lookup_pattern_start.elapsed()
+                );
                 return Ok(result);
             }
         }
 
         // Then check the database
-        {
-            let db = self.database.read().await;
-            if let Some((partial_hash, threat_descriptors)) = db.lookup(&hash).await? {
-                // We have a partial match, need to query the API for full hashes
-                let threats = self
-                    .query_full_hashes(&partial_hash, &threat_descriptors)
-                    .await?;
+        if let Some((partial_hash, threat_descriptors)) = self.database.lookup(&hash).await? {
+            // We have a partial match, need to query the API for full hashes
+            let threats = self
+                .query_full_hashes(&partial_hash, &threat_descriptors)
+                .await?;
+            // Instrumentation: log lookup_pattern duration for database-hit
+            debug!(
+                "lookup_pattern (db) for '{}' completed in {:?}",
+                pattern,
+                lookup_pattern_start.elapsed()
+            );
 
-                // Update cache with results
-                {
-                    let mut cache = self.cache.lock().await;
-                    cache.insert(hash.clone(), threats.clone());
-                }
-
-                let mut stats = self.stats.lock().await;
-                stats.queries_by_database += 1;
-                return Ok(threats);
+            // Update cache with results
+            {
+                let mut cache = self.cache.lock().await;
+                cache.insert(hash.clone(), threats.clone());
             }
+
+            let mut stats = self.stats.lock().await;
+            stats.queries_by_database += 1;
+            return Ok(threats);
         }
 
         // No match found
         let mut stats = self.stats.lock().await;
         stats.queries_by_database += 1;
+        // Instrumentation: log lookup_pattern duration for no-match
+        debug!(
+            "lookup_pattern for '{}' completed in {:?}",
+            pattern,
+            lookup_pattern_start.elapsed()
+        );
         Ok(Vec::new())
     }
 
@@ -361,9 +449,9 @@ impl SafeBrowser {
             threats.push(URLThreat {
                 pattern: String::new(), // Will be filled in by caller
                 threat_descriptor: ThreatDescriptor {
-                    threat_type: threat_match.threat_type.into(),
-                    platform_type: threat_match.platform_type.into(),
-                    threat_entry_type: threat_match.threat_entry_type.into(),
+                    threat_type: ThreatType::from(threat_match.threat_type),
+                    platform_type: PlatformType::from(threat_match.platform_type),
+                    threat_entry_type: ThreatEntryType::from(threat_match.threat_entry_type),
                 },
             });
         }
@@ -386,14 +474,8 @@ impl SafeBrowser {
         let update_period = self.config.update_period;
 
         let update_task = tokio::spawn(async move {
+            // First interval is immediate, for initial update
             let mut interval = interval(update_period);
-
-            // Initial update
-            if let Err(e) =
-                Self::perform_update(&api, &database, &threat_lists, &last_update, &stats).await
-            {
-                error!("Initial database update failed: {}", e);
-            }
 
             loop {
                 tokio::select! {
@@ -416,15 +498,14 @@ impl SafeBrowser {
 
     async fn perform_update(
         api: &SafeBrowsingApi,
-        database: &Arc<RwLock<dyn Database + Send + Sync>>,
+        database: &Arc<dyn Database + Send + Sync>,
         threat_lists: &[ThreatDescriptor],
         last_update: &Arc<RwLock<Option<Instant>>>,
         stats: &Arc<Mutex<Stats>>,
     ) -> Result<()> {
         debug!("Starting database update");
 
-        let mut db = database.write().await;
-        match db.update(api, threat_lists).await {
+        match database.update(api, threat_lists).await {
             Ok(()) => {
                 let mut last_update_guard = last_update.write().await;
                 *last_update_guard = Some(Instant::now());
@@ -434,7 +515,7 @@ impl SafeBrowser {
                 let mut stats_guard = stats.lock().await;
                 stats_guard.queries_fail += 1;
                 warn!("Database update failed: {}", e);
-                return Err(e);
+                return Err(Error::Database(e));
             }
         }
 
@@ -463,7 +544,6 @@ impl std::fmt::Debug for SafeBrowser {
 #[cfg(test)]
 mod tests {
     use super::*;
-
 
     #[tokio::test]
     async fn test_config_default() {

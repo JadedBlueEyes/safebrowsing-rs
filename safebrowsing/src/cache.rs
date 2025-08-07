@@ -3,9 +3,8 @@
 //! This module provides TTL-based caching for API responses to reduce network calls
 //! and improve performance.
 
-use crate::error::Error;
-use crate::hash::HashPrefix;
-use crate::types::{ThreatDescriptor, URLThreat};
+use safebrowsing_api::{ThreatDescriptor, URLThreat};
+use safebrowsing_hash::HashPrefix;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
@@ -43,10 +42,6 @@ impl ThreatCacheEntry {
             .filter(|(_, &expiry)| expiry > now)
             .map(|(threat, _)| threat.clone())
             .collect()
-    }
-
-    fn has_valid_threats(&self, now: Instant) -> bool {
-        self.threats.values().any(|&expiry| expiry > now)
     }
 
     fn cleanup_expired(&mut self, now: Instant) {
@@ -104,7 +99,7 @@ impl Cache {
 
     /// Look up a hash in the cache
     pub fn lookup(&mut self, hash: &HashPrefix) -> Option<Vec<URLThreat>> {
-        if !hash.is_full() {
+        if !hash.is_full_hash() {
             return None;
         }
 
@@ -118,7 +113,10 @@ impl Cache {
                 self.hits += 1;
                 let url_threats = valid_threats
                     .into_iter()
-                    .map(|threat| URLThreat::new(String::new(), threat))
+                    .map(|threat| URLThreat {
+                        pattern: String::new(),
+                        threat_descriptor: threat,
+                    })
                     .collect();
                 return Some(url_threats);
             }
@@ -131,7 +129,7 @@ impl Cache {
         }
 
         // Check negative cache for all possible prefixes
-        for prefix_len in crate::hash::MIN_HASH_PREFIX_LENGTH..=hash.len() {
+        for prefix_len in 4..=hash.len() {
             if let Ok(prefix) = hash.truncate(prefix_len) {
                 if let Some(&expiry) = self.negative_cache.get(&prefix) {
                     if expiry > now {
@@ -156,7 +154,7 @@ impl Cache {
         threats: Vec<ThreatDescriptor>,
         ttl: Duration,
     ) {
-        if !hash.is_full() {
+        if !hash.is_full_hash() {
             return;
         }
 
@@ -196,14 +194,14 @@ impl Cache {
     pub fn update_with_response(
         &mut self,
         request_hashes: &[HashPrefix],
-        response: &crate::proto::safebrowsing_proto::FindFullHashesResponse,
+        response: &safebrowsing_proto::FindFullHashesResponse,
     ) {
-        let now = Instant::now();
+        let _now = Instant::now();
 
         // Insert positive cache entries for matches
         for threat_match in &response.matches {
             if let Some(threat_entry) = &threat_match.threat {
-                let full_hash = HashPrefix::from(threat_entry.hash.clone());
+                let full_hash = HashPrefix::new(threat_entry.hash.clone()).unwrap();
 
                 let ttl = if let Some(cache_duration) = &threat_match.cache_duration {
                     Duration::from_secs(cache_duration.seconds as u64)
@@ -213,9 +211,9 @@ impl Cache {
                 };
 
                 let threat_descriptor = ThreatDescriptor {
-                    threat_type: threat_match.threat_type().into(),
-                    platform_type: threat_match.platform_type().into(),
-                    threat_entry_type: threat_match.threat_entry_type().into(),
+                    threat_type: threat_match.threat_type.into(),
+                    platform_type: threat_match.platform_type.into(),
+                    threat_entry_type: threat_match.threat_entry_type.into(),
                 };
 
                 self.insert_positive(full_hash, vec![threat_descriptor], ttl);
@@ -231,8 +229,8 @@ impl Cache {
                 // Only add negative entry if no positive match exists
                 let has_positive_match = response.matches.iter().any(|m| {
                     if let Some(threat_entry) = &m.threat {
-                        let match_hash = HashPrefix::from(threat_entry.hash.clone());
-                        match_hash.has_prefix(hash_prefix)
+                        let match_hash = HashPrefix::new(threat_entry.hash.clone()).unwrap();
+                        hash_prefix.is_prefix_of(&match_hash)
                     } else {
                         false
                     }
@@ -340,10 +338,10 @@ impl std::fmt::Display for CacheStats {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{PlatformType, ThreatEntryType, ThreatType};
+    use safebrowsing_api::{PlatformType, ThreatEntryType, ThreatType};
 
     fn create_test_hash() -> HashPrefix {
-        HashPrefix::from_pattern("test.example.com/path")
+        HashPrefix::full_hash("test.example.com/path")
     }
 
     fn create_test_threat_descriptor() -> ThreatDescriptor {
@@ -457,7 +455,10 @@ mod tests {
         assert!(result.is_empty());
 
         // Test with threats (positive cache)
-        let threat = URLThreat::new("test".to_string(), create_test_threat_descriptor());
+        let threat = URLThreat {
+            pattern: "test".to_string(),
+            threat_descriptor: create_test_threat_descriptor(),
+        };
         cache.insert(hash.clone(), vec![threat.clone()]);
         let result = cache.lookup(&hash).unwrap();
         assert_eq!(result.len(), 1);

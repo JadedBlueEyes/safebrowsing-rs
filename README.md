@@ -1,20 +1,35 @@
 # Safe Browsing API Client for Rust
 
-[![Build Status](https://github.com/your-org/safebrowsing-rs/workflows/CI/badge.svg)](https://github.com/your-org/safebrowsing-rs/actions)
+<!--[![Build Status](https://github.com/your-org/safebrowsing-rs/workflows/CI/badge.svg)](https://github.com/your-org/safebrowsing-rs/actions)-->
 [![Crates.io](https://img.shields.io/crates/v/safebrowsing.svg)](https://crates.io/crates/safebrowsing)
 [![Documentation](https://docs.rs/safebrowsing/badge.svg)](https://docs.rs/safebrowsing)
 
-A Rust implementation of the [Google Safe Browsing Update API (v4)](https://developers.google.com/safe-browsing/v4/). This library allows you to check URLs against Google's constantly updated lists of unsafe web resources.
+A Rust implementation of the [Google Safe Browsing Update API (v4)](https://developers.google.com/safe-browsing/v4/). This library allows you to check URLs against Google's safebrowsing URL database using the privacy-preserving lookup API v4.
 
-## Features
+> [!warning] AI generated, not production ready
+> This library is currently mostly AI generated as an experiment. It is functional and passes testing, but has known performance issues and the code is not of an exceptional standard.
+>
+> This may be improved in future to power a production service, but is not there yet. If you find this a useful starting point, please feel free to contribute your changes.
 
-- **Asynchronous API** using tokio for high performance
-- **Pluggable database backends** for flexible storage options
-- **Built-in caching** with TTL support to reduce API calls
-- **URL canonicalization** and pattern generation according to Safe Browsing specs
-- **Support for all threat types**: Malware, Social Engineering, Unwanted Software, and Potentially Harmful Applications
-- **Comprehensive error handling** with retryable and permanent error classification
-- **Command-line tools** for URL checking and proxy server
+
+## Architecture
+
+![Workspace layout](./docs/workspace-deps-simplified.svg)
+
+
+
+### Core Library Crates
+- `safebrowsing`: Main facade crate
+- `safebrowsing-api`: Client for communicating with Google's servers (using protobuf)
+- `safebrowsing-hash`: Rice-Golomb decoding, Efficient hash prefix storage and lookup
+- `safebrowsing-url`: URL canonicalisation and pattern generation
+- `safebrowsing-proto`: Protocol buffer definitions for API communications (prost)
+- `safebrowsing-db`: Pluggable storage for threat lists (Trait definition, in-memory)
+- `safebrowsing-db-redb`: `redb` persistent threat storage
+
+### Binary Crates
+- `sblookup`: Command-line URL checking tool
+- `sbserver`: HTTP proxy server with Safe Browsing API endpoints
 
 ## Quick Start
 
@@ -29,7 +44,8 @@ tokio = { version = "1.0", features = ["full"] }
 ### Basic Usage
 
 ```rust
-use safebrowsing::{SafeBrowser, Config, ThreatType, PlatformType, ThreatEntryType};
+use safebrowsing::{SafeBrowser, Config, ThreatDescriptor};
+use safebrowsing_api::{ThreatType, PlatformType, ThreatEntryType};
 use std::time::Duration;
 
 #[tokio::main]
@@ -40,8 +56,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         client_version: "1.0.0".to_string(),
         update_period: Duration::from_secs(1800), // 30 minutes
         threat_lists: vec![
-            (ThreatType::Malware, PlatformType::AnyPlatform, ThreatEntryType::Url),
-            (ThreatType::SocialEngineering, PlatformType::AnyPlatform, ThreatEntryType::Url),
+            ThreatDescriptor {
+                threat_type: ThreatType::Malware,
+                platform_type: PlatformType::AnyPlatform,
+                threat_entry_type: ThreatEntryType::Url,
+            },
+            ThreatDescriptor {
+                threat_type: ThreatType::SocialEngineering,
+                platform_type: PlatformType::AnyPlatform,
+                threat_entry_type: ThreatEntryType::Url,
+            },
         ],
         ..Default::default()
     };
@@ -54,7 +78,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for (url, threat_matches) in urls.iter().zip(threats.iter()) {
         if !threat_matches.is_empty() {
-            println!("⚠️  {} is unsafe: {:?}", url, threat_matches);
+            println!("⚠️ {} is unsafe: {:?}", url, threat_matches);
         } else {
             println!("✅ {} is safe", url);
         }
@@ -65,43 +89,56 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-### Custom Database Backend
-
-The library supports pluggable database backends:
-
-```rust
-use safebrowsing::{SafeBrowser, Config, InMemoryDatabase, ConcurrentDatabase};
-use std::sync::Arc;
-use tokio::sync::RwLock;
-
-// Using the built-in concurrent database
-let db = Arc::new(RwLock::new(ConcurrentDatabase::new()));
-let sb = SafeBrowser::with_database(config, db).await?;
-```
-
 ## Command Line Tools
 
-### sblookup
+This workspace includes two binary crates with command-line tools:
 
-A command-line tool for checking URLs from stdin:
+### `sblookup`
+
+A command-line tool for checking URLs for threats:
 
 ```bash
-cargo install safebrowsing --features=bin
+# Build and run from workspace
+cargo run --bin sblookup -- --api-key YOUR_API_KEY http://example.com
 
-echo "http://testsafebrowsing.appspot.com/apiv4/ANY_PLATFORM/MALWARE/URL/" | sblookup -apikey YOUR_API_KEY
+# Or install and use globally
+cargo install --path sblookup
+echo "http://testsafebrowsing.appspot.com/apiv4/ANY_PLATFORM/MALWARE/URL/" | sblookup --api-key YOUR_API_KEY
 ```
 
-### sbserver
+See [sblookup/README.md](sblookup/README.md) for detailed usage.
+
+### `sbserver`
 
 A local proxy server that provides Safe Browsing API endpoints:
 
 ```bash
-sbserver -apikey YOUR_API_KEY -addr 0.0.0.0:8080
+# Build and run from workspace
+cargo run --bin sbserver -- --api-key YOUR_API_KEY --bind-addr 0.0.0.0:8080
+
+# Or install and use globally
+cargo install --path sbserver
+sbserver --api-key YOUR_API_KEY --bind-addr 0.0.0.0:8080
 ```
 
 The server provides:
-- `POST /v4/threatMatches:find` - Safe Browsing API proxy
+- `POST /v4/threatMatches:find` - Safe Browsing API proxy compatible with Google's format
 - `GET /r?url=<URL>` - URL redirector with interstitial warning pages
+- `GET /` - Health check endpoint
+
+See [sbserver/README.md](sbserver/README.md) for detailed usage and API documentation.
+
+## Database Backends
+
+The library supports pluggable database backends with a trait implementation. Basic in-memory types are provided, as well as a redb implementation.
+
+### Database Storage Locations
+
+When using `DatabaseType::Redb`, the database is stored in the system cache location:
+
+- **Linux**: `~/.cache/safebrowsing/database.redb`
+- **macOS**: `~/Library/Caches/safebrowsing/database.redb`
+- **Windows**: `%LOCALAPPDATA%\safebrowsing\database.redb`
 
 ## Configuration
 
@@ -113,77 +150,15 @@ The server provides:
 4. Create credentials (API key)
 5. Optionally restrict the API key to Safe Browsing API only
 
-### Threat Lists
 
-The library supports all Safe Browsing threat types:
-
-```rust
-use safebrowsing::types::{ThreatType, PlatformType, ThreatEntryType, ThreatDescriptor};
-
-let threat_lists = vec![
-    // Web threats (most common)
-    ThreatDescriptor::new(ThreatType::Malware, PlatformType::AnyPlatform, ThreatEntryType::Url),
-    ThreatDescriptor::new(ThreatType::SocialEngineering, PlatformType::AnyPlatform, ThreatEntryType::Url),
-    ThreatDescriptor::new(ThreatType::UnwantedSoftware, PlatformType::AnyPlatform, ThreatEntryType::Url),
-    
-    // Android-specific threats
-    ThreatDescriptor::new(ThreatType::PotentiallyHarmfulApplication, PlatformType::Android, ThreatEntryType::Url),
-];
-```
-
-## Architecture
-
-The library is built with modularity in mind:
-
-- **SafeBrowser**: Main client that orchestrates all components
-- **API Client**: HTTP client for communicating with Google's servers
-- **Database**: Pluggable storage for threat lists (in-memory, file-based, etc.)
-- **Cache**: TTL-based caching to reduce API calls
-- **URL Processing**: Canonicalization and pattern generation
-- **Hash Operations**: Efficient hash prefix storage and lookup
-
-## Performance
-
-- **Asynchronous**: Built on tokio for high concurrency
-- **Efficient Storage**: Optimized hash set implementation for fast lookups
-- **Smart Caching**: Reduces API calls while respecting TTL requirements
-- **Batch Operations**: Support for bulk URL checking
-
-## Error Handling
-
-The library provides comprehensive error handling with classification:
-
-```rust
-use safebrowsing::Error;
-
-match sb.lookup_urls(&urls).await {
-    Ok(results) => { /* handle results */ },
-    Err(e) => {
-        if e.is_retryable() {
-            // Temporary error, retry later
-            eprintln!("Temporary error: {}", e);
-        } else if e.is_permanent() {
-            // Permanent error, don't retry
-            eprintln!("Permanent error: {}", e);
-        } else {
-            eprintln!("Error: {}", e);
-        }
-    }
-}
-```
 
 ## Testing
 
 Run the test suite:
 
 ```bash
-cargo test
-```
-
-Run with nextest for better output:
-
-```bash
 cargo nextest run
+# cargo test # Also works, but is slower
 ```
 
 Format code:
@@ -197,18 +172,6 @@ Run clippy for linting:
 ```bash
 cargo clippy
 ```
-
-## Examples
-
-See the `examples/` directory for more comprehensive examples:
-
-- `examples/basic.rs` - Basic URL checking
-- `examples/server.rs` - Running a Safe Browsing proxy server
-- `examples/custom_db.rs` - Using custom database backends
-
-## Contributing
-
-Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) for details.
 
 ### Development Setup
 
@@ -225,11 +188,3 @@ This project is licensed under either of
 - MIT license ([LICENSE-MIT](LICENSE-MIT) or <http://opensource.org/licenses/MIT>)
 
 at your option.
-
-## Acknowledgments
-
-This implementation is based on the reference Go implementation by Google and follows the Safe Browsing API v4 specification. Special thanks to the Google Safe Browsing team for providing comprehensive documentation and test cases.
-
-## Safety and Disclaimer
-
-This library is designed for legitimate security applications. Please use responsibly and in accordance with Google's Safe Browsing API terms of service. The authors are not responsible for any misuse of this software.
