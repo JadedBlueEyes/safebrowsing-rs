@@ -3,6 +3,9 @@
 <!--[![Build Status](https://github.com/your-org/safebrowsing-rs/workflows/CI/badge.svg)](https://github.com/your-org/safebrowsing-rs/actions)-->
 [![Crates.io](https://img.shields.io/crates/v/safebrowsing.svg)](https://crates.io/crates/safebrowsing)
 [![Documentation](https://docs.rs/safebrowsing/badge.svg)](https://docs.rs/safebrowsing)
+[![Chat on Matrix](https://img.shields.io/matrix/safebrowsing-rs%3Aellis.link?server_fqdn=matrix.ellis.link&fetchMode=summary&logo=matrix)](https://matrix.to/#/#safebrowsing-rs:ellis.link?via=ellis.link&via=maunium.net) [![Chat on Discord](https://img.shields.io/discord/1292872397338312714?logo=discord)](https://discord.gg/zABqAq9apx)
+
+
 
 A Rust implementation of the [Google Safe Browsing Update API (v4)](https://developers.google.com/safe-browsing/v4/). This library allows you to check URLs against Google's safebrowsing URL database using the privacy-preserving lookup API v4.
 
