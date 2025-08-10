@@ -39,3 +39,8 @@ tempfile.workspace = true
 tracing-subscriber.workspace = true
 prost = "0.12"
 hex = "0.4"
+
+[[example]]
+name = "basic_usage"
+path = "examples/basic_usage.rs"
+required-features = ["redb"]

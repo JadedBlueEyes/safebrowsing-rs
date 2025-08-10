@@ -8,13 +8,11 @@
 //! cargo run --example basic_usage
 //! ```
 
-#[cfg(feature = "redb")]
 use safebrowsing_db::redb::RedbDatabase;
 use safebrowsing_db::{Database, DatabaseStats};
 use tempfile::tempdir;
 
 #[tokio::main]
-#[cfg(feature = "redb")]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize logging
     tracing_subscriber::fmt::init();
