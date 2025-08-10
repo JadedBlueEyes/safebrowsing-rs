@@ -38,7 +38,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Check if the database is ready
     let is_ready = db.is_ready().await?;
-    println!("🔍 Database ready: {}", is_ready);
+    println!("🔍 Database ready: {is_ready}");
 
     // Get initial statistics
     let stats = db.stats().await;
@@ -47,12 +47,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Check database status
     match db.status().await {
         Ok(()) => println!("✅ Database status: OK"),
-        Err(e) => println!("⚠️  Database status: {}", e),
+        Err(e) => println!("⚠️  Database status: {e}"),
     }
 
     // Get time since last update
     if let Some(duration) = db.time_since_last_update().await {
-        println!("⏰ Time since last update: {:?}", duration);
+        println!("⏰ Time since last update: {duration:?}");
     } else {
         println!("⏰ No previous updates found");
     }
@@ -83,7 +83,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn print_stats(label: &str, stats: &DatabaseStats) {
-    println!("\n📊 {} Database Statistics:", label);
+    println!("\n📊 {label} Database Statistics:");
     println!("   • Total hashes: {}", stats.total_hashes);
     println!("   • Threat lists: {}", stats.threat_lists);
     println!("   • Memory usage: {} bytes", stats.memory_usage);

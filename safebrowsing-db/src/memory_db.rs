@@ -581,7 +581,7 @@ impl Database for InMemoryDatabase {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::memory_db::*;
+
     use safebrowsing_api::{PlatformType, ThreatDescriptor, ThreatEntryType, ThreatType};
     use safebrowsing_hash::HashPrefix;
 

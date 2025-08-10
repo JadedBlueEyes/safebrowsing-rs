@@ -101,7 +101,7 @@ impl RedbDatabase {
             let mut db = RedbDb::open(&path).map_err(|e| {
                 DatabaseError::DecodeError(format!("Failed to open existing database: {e}"))
             })?;
-            db.upgrade();
+            db.upgrade()?;
             db
         } else {
             info!("Creating new database at {:?}", path);

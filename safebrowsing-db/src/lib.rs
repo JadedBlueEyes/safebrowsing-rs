@@ -16,14 +16,11 @@ use async_trait::async_trait;
 use safebrowsing_api::{SafeBrowsingApi, ThreatDescriptor};
 
 use safebrowsing_hash::{HashPrefix, HashPrefixSet};
-use safebrowsing_proto::{CompressionType, RawHashes, RawIndices, RiceDeltaEncoding};
-use std::collections::{HashMap, HashSet as StdHashSet};
+use std::collections::HashSet as StdHashSet;
 use std::fmt;
-use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::sync::{Mutex, RwLock};
 
-use tracing::{debug, error, info, warn};
+use tracing::error;
 
 /// Error and Result types should be imported from a shared error module or defined here
 type Result<T> = std::result::Result<T, DatabaseError>;

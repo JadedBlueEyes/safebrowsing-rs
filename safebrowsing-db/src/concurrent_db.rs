@@ -1,19 +1,11 @@
-use std::{
-    collections::HashMap,
-    sync::Arc,
-    time::{Duration, Instant},
-};
+use std::{sync::Arc, time::Duration};
 
 use async_trait::async_trait;
 use safebrowsing_api::{SafeBrowsingApi, ThreatDescriptor};
-use safebrowsing_hash::{HashPrefix, HashPrefixSet};
-use safebrowsing_proto::{CompressionType, RawHashes, RawIndices, RiceDeltaEncoding};
-use tokio::sync::{Mutex, RwLock};
-use tracing::{debug, error, info, warn};
+use safebrowsing_hash::HashPrefix;
+use tokio::sync::Mutex;
 
-use crate::{
-    memory_db::InMemoryDatabase, Database, DatabaseError, DatabaseStats, Result, ThreatListEntry,
-};
+use crate::{memory_db::InMemoryDatabase, Database, DatabaseStats, Result};
 
 /// Thread-safe wrapper around an in-memory database
 ///

@@ -229,13 +229,13 @@ impl SafeBrowser {
             DatabaseType::Redb => {
                 use crate::database::RedbDatabase;
                 let db_path = RedbDatabase::default_path().map_err(|e| {
-                    Error::Configuration(format!("Failed to get default database path: {}", e))
+                    Error::Configuration(format!("Failed to get default database path: {e}"))
                 })?;
                 let db = RedbDatabase::new(db_path).map_err(|e| {
-                    Error::Configuration(format!("Failed to create redb database: {}", e))
+                    Error::Configuration(format!("Failed to create redb database: {e}"))
                 })?;
                 db.init().await.map_err(|e| {
-                    Error::Configuration(format!("Failed to initialize redb database: {}", e))
+                    Error::Configuration(format!("Failed to initialize redb database: {e}"))
                 })?;
                 Arc::new(db) as Arc<dyn Database + Send + Sync>
             }
