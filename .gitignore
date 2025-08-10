@@ -2,3 +2,4 @@ target
 .env
 .envrc
 .DS_Store
+.direnv
