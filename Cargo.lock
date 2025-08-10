@@ -1591,7 +1591,6 @@ dependencies = [
  "reqwest",
  "safebrowsing-api",
  "safebrowsing-db",
- "safebrowsing-db-redb",
  "safebrowsing-hash",
  "safebrowsing-proto",
  "safebrowsing-url",
@@ -1636,33 +1635,13 @@ dependencies = [
  "async-trait",
  "bytes",
  "dashmap",
+ "dirs",
  "flate2",
  "hex",
  "prost",
  "rand 0.8.5",
- "safebrowsing-api",
- "safebrowsing-hash",
- "safebrowsing-proto",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror",
- "tokio",
- "tokio-test",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "safebrowsing-db-redb"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "bytes",
- "dirs",
  "redb",
  "safebrowsing-api",
- "safebrowsing-db",
  "safebrowsing-hash",
  "safebrowsing-proto",
  "serde",

@@ -4,14 +4,13 @@
 //! the Database trait from safebrowsing-db. It stores threat lists on disk and provides
 //! thread-safe access with ACID transactions.
 
+use crate::{Database, DatabaseError, DatabaseStats};
 use async_trait::async_trait;
 use redb::{Database as RedbDb, ReadableTable, TableDefinition};
 use safebrowsing_api::{SafeBrowsingApi, ThreatDescriptor};
-use safebrowsing_db::{Database, DatabaseError, DatabaseStats};
 use safebrowsing_hash::{HashPrefix, HashPrefixSet};
 use safebrowsing_proto::{CompressionType, RiceDeltaEncoding};
 use serde::{Deserialize, Serialize};
-use std::borrow::BorrowMut;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -66,7 +65,7 @@ impl StoredThreatListEntry {
         let mut hash_set = HashPrefixSet::new();
         for prefix_bytes in &self.hash_prefixes {
             let prefix = HashPrefix::new(prefix_bytes.clone())
-                .map_err(|e| DatabaseError::DecodeError(format!("Invalid hash prefix: {}", e)))?;
+                .map_err(|e| DatabaseError::DecodeError(format!("Invalid hash prefix: {e}")))?;
             hash_set.insert(prefix);
         }
         Ok(hash_set)
@@ -100,7 +99,7 @@ impl RedbDatabase {
         let db = if path.exists() {
             info!("Opening existing database at {:?}", path);
             let mut db = RedbDb::open(&path).map_err(|e| {
-                DatabaseError::DecodeError(format!("Failed to open existing database: {}", e))
+                DatabaseError::DecodeError(format!("Failed to open existing database: {e}"))
             })?;
             db.upgrade();
             db
@@ -110,35 +109,35 @@ impl RedbDatabase {
                 .create_with_file_format_v3(true)
                 .create(&path)
                 .map_err(|e| {
-                    DatabaseError::DecodeError(format!("Failed to create new database: {}", e))
+                    DatabaseError::DecodeError(format!("Failed to create new database: {e}"))
                 })?
         };
 
         // Initialize tables
         {
             let write_txn = db.begin_write().map_err(|e| {
-                DatabaseError::DecodeError(format!("Failed to begin write transaction: {}", e))
+                DatabaseError::DecodeError(format!("Failed to begin write transaction: {e}"))
             })?;
 
             write_txn.open_table(THREAT_LISTS_TABLE).map_err(|e| {
-                DatabaseError::DecodeError(format!("Failed to create threat_lists table: {}", e))
+                DatabaseError::DecodeError(format!("Failed to create threat_lists table: {e}"))
             })?;
             write_txn.open_table(METADATA_TABLE).map_err(|e| {
-                DatabaseError::DecodeError(format!("Failed to create metadata table: {}", e))
+                DatabaseError::DecodeError(format!("Failed to create metadata table: {e}"))
             })?;
             write_txn.open_table(HASH_TABLE).map_err(|e| {
-                DatabaseError::DecodeError(format!("Failed to create hash table: {}", e))
+                DatabaseError::DecodeError(format!("Failed to create hash table: {e}"))
             })?;
 
             write_txn.commit().map_err(|e| {
-                DatabaseError::DecodeError(format!("Failed to commit transaction: {}", e))
+                DatabaseError::DecodeError(format!("Failed to commit transaction: {e}"))
             })?;
         }
 
         let instance = Self {
             db: Arc::new(db),
             cache: Arc::new(RwLock::new(HashMap::new())),
-            max_age: safebrowsing_db::DEFAULT_MAX_DATABASE_AGE,
+            max_age: crate::DEFAULT_MAX_DATABASE_AGE,
             path,
         };
 
@@ -175,11 +174,11 @@ impl RedbDatabase {
     async fn load_cache(&self) -> Result<()> {
         debug!("Loading cache from database");
         let read_txn = self.db.begin_read().map_err(|e| {
-            DatabaseError::DecodeError(format!("Failed to begin read transaction: {}", e))
+            DatabaseError::DecodeError(format!("Failed to begin read transaction: {e}"))
         })?;
 
         let table = read_txn.open_table(THREAT_LISTS_TABLE).map_err(|e| {
-            DatabaseError::DecodeError(format!("Failed to open threat_lists table: {}", e))
+            DatabaseError::DecodeError(format!("Failed to open threat_lists table: {e}"))
         })?;
 
         let mut cache = HashMap::new();
@@ -187,20 +186,20 @@ impl RedbDatabase {
 
         for item in table
             .iter()
-            .map_err(|e| DatabaseError::DecodeError(format!("Failed to iterate table: {}", e)))?
+            .map_err(|e| DatabaseError::DecodeError(format!("Failed to iterate table: {e}")))?
         {
             let (key, value) = item.map_err(|e| {
-                DatabaseError::DecodeError(format!("Failed to read table item: {}", e))
+                DatabaseError::DecodeError(format!("Failed to read table item: {e}"))
             })?;
 
             let threat_descriptor: ThreatDescriptor =
                 serde_json::from_str(key.value()).map_err(|e| {
-                    DatabaseError::DecodeError(format!("Failed to decode threat descriptor: {}", e))
+                    DatabaseError::DecodeError(format!("Failed to decode threat descriptor: {e}"))
                 })?;
 
             let entry: StoredThreatListEntry =
                 serde_json::from_slice(value.value()).map_err(|e| {
-                    DatabaseError::DecodeError(format!("Failed to decode threat list entry: {}", e))
+                    DatabaseError::DecodeError(format!("Failed to decode threat list entry: {e}"))
                 })?;
 
             debug!(
@@ -242,31 +241,31 @@ impl RedbDatabase {
 
         // Then persist to disk
         let threat_descriptor_key = serde_json::to_string(threat_descriptor).map_err(|e| {
-            DatabaseError::DecodeError(format!("Failed to serialize threat descriptor: {}", e))
+            DatabaseError::DecodeError(format!("Failed to serialize threat descriptor: {e}"))
         })?;
 
         let entry_value = serde_json::to_vec(&entry).map_err(|e| {
-            DatabaseError::DecodeError(format!("Failed to serialize threat list entry: {}", e))
+            DatabaseError::DecodeError(format!("Failed to serialize threat list entry: {e}"))
         })?;
 
         let write_txn = self.db.begin_write().map_err(|e| {
-            DatabaseError::DecodeError(format!("Failed to begin write transaction: {}", e))
+            DatabaseError::DecodeError(format!("Failed to begin write transaction: {e}"))
         })?;
 
         {
             let mut table = write_txn.open_table(THREAT_LISTS_TABLE).map_err(|e| {
-                DatabaseError::DecodeError(format!("Failed to open threat_lists table: {}", e))
+                DatabaseError::DecodeError(format!("Failed to open threat_lists table: {e}"))
             })?;
 
             table
                 .insert(threat_descriptor_key.as_str(), entry_value.as_slice())
                 .map_err(|e| {
-                    DatabaseError::DecodeError(format!("Failed to insert threat list: {}", e))
+                    DatabaseError::DecodeError(format!("Failed to insert threat list: {e}"))
                 })?;
         }
 
         write_txn.commit().map_err(|e| {
-            DatabaseError::DecodeError(format!("Failed to commit transaction: {}", e))
+            DatabaseError::DecodeError(format!("Failed to commit transaction: {e}"))
         })?;
 
         debug!(
@@ -280,21 +279,21 @@ impl RedbDatabase {
     fn store_metadata(&self, key: &str, value: &[u8]) -> Result<()> {
         debug!("Storing metadata key: {}", key);
         let write_txn = self.db.begin_write().map_err(|e| {
-            DatabaseError::DecodeError(format!("Failed to begin write transaction: {}", e))
+            DatabaseError::DecodeError(format!("Failed to begin write transaction: {e}"))
         })?;
 
         {
             let mut table = write_txn.open_table(METADATA_TABLE).map_err(|e| {
-                DatabaseError::DecodeError(format!("Failed to open metadata table: {}", e))
+                DatabaseError::DecodeError(format!("Failed to open metadata table: {e}"))
             })?;
 
             table.insert(key, value).map_err(|e| {
-                DatabaseError::DecodeError(format!("Failed to insert metadata: {}", e))
+                DatabaseError::DecodeError(format!("Failed to insert metadata: {e}"))
             })?;
         }
 
         write_txn.commit().map_err(|e| {
-            DatabaseError::DecodeError(format!("Failed to commit transaction: {}", e))
+            DatabaseError::DecodeError(format!("Failed to commit transaction: {e}"))
         })?;
 
         debug!("Successfully stored metadata key: {}", key);
@@ -305,11 +304,11 @@ impl RedbDatabase {
     fn get_metadata(&self, key: &str) -> Result<Option<Vec<u8>>> {
         debug!("Getting metadata key: {}", key);
         let read_txn = self.db.begin_read().map_err(|e| {
-            DatabaseError::DecodeError(format!("Failed to begin read transaction: {}", e))
+            DatabaseError::DecodeError(format!("Failed to begin read transaction: {e}"))
         })?;
 
         let table = read_txn.open_table(METADATA_TABLE).map_err(|e| {
-            DatabaseError::DecodeError(format!("Failed to open metadata table: {}", e))
+            DatabaseError::DecodeError(format!("Failed to open metadata table: {e}"))
         })?;
 
         match table.get(key) {
@@ -326,8 +325,7 @@ impl RedbDatabase {
                 Ok(None)
             }
             Err(e) => Err(DatabaseError::DecodeError(format!(
-                "Failed to get metadata: {}",
-                e
+                "Failed to get metadata: {e}"
             ))),
         }
     }
@@ -672,7 +670,7 @@ impl RedbDatabase {
         let response = api
             .fetch_threat_list_update(threat_descriptor, &client_state)
             .await
-            .map_err(|e| DatabaseError::ApiError(e))?;
+            .map_err(DatabaseError::ApiError)?;
 
         if response.list_update_responses.is_empty() {
             return Ok(());
@@ -708,8 +706,7 @@ impl RedbDatabase {
             }
             _ => {
                 return Err(DatabaseError::DecodeError(format!(
-                    "Unknown response type: {}",
-                    response_type
+                    "Unknown response type: {response_type}"
                 )));
             }
         }
@@ -776,7 +773,7 @@ impl Database for RedbDatabase {
             let response = api
                 .fetch_threat_list_update(threat_descriptor, &client_state)
                 .await
-                .map_err(|e| DatabaseError::ApiError(e))?;
+                .map_err(DatabaseError::ApiError)?;
 
             if response.list_update_responses.is_empty() {
                 continue;
@@ -827,8 +824,7 @@ impl Database for RedbDatabase {
                 }
                 _ => {
                     return Err(DatabaseError::DecodeError(format!(
-                        "Unknown response type: {}",
-                        response_type
+                        "Unknown response type: {response_type}"
                     )));
                 }
             }
@@ -845,31 +841,31 @@ impl Database for RedbDatabase {
 
             // Store in a single transaction
             let threat_descriptor_key = serde_json::to_string(threat_descriptor).map_err(|e| {
-                DatabaseError::DecodeError(format!("Failed to serialize threat descriptor: {}", e))
+                DatabaseError::DecodeError(format!("Failed to serialize threat descriptor: {e}"))
             })?;
 
             let entry_value = serde_json::to_vec(&entry).map_err(|e| {
-                DatabaseError::DecodeError(format!("Failed to serialize threat list entry: {}", e))
+                DatabaseError::DecodeError(format!("Failed to serialize threat list entry: {e}"))
             })?;
 
             let write_txn = self.db.begin_write().map_err(|e| {
-                DatabaseError::DecodeError(format!("Failed to begin write transaction: {}", e))
+                DatabaseError::DecodeError(format!("Failed to begin write transaction: {e}"))
             })?;
 
             {
                 let mut table = write_txn.open_table(THREAT_LISTS_TABLE).map_err(|e| {
-                    DatabaseError::DecodeError(format!("Failed to open threat_lists table: {}", e))
+                    DatabaseError::DecodeError(format!("Failed to open threat_lists table: {e}"))
                 })?;
 
                 table
                     .insert(threat_descriptor_key.as_str(), entry_value.as_slice())
                     .map_err(|e| {
-                        DatabaseError::DecodeError(format!("Failed to insert threat list: {}", e))
+                        DatabaseError::DecodeError(format!("Failed to insert threat list: {e}"))
                     })?;
             }
 
             write_txn.commit().map_err(|e| {
-                DatabaseError::DecodeError(format!("Failed to commit transaction: {}", e))
+                DatabaseError::DecodeError(format!("Failed to commit transaction: {e}"))
             })?;
 
             // Update cache
@@ -982,13 +978,10 @@ impl Database for RedbDatabase {
 
 impl Default for RedbDatabase {
     fn default() -> Self {
-        let db =
-            Self::new(Self::default_path().unwrap_or_else(|_| PathBuf::from("safebrowsing.redb")))
-                .expect("Failed to create default RedbDatabase");
-
         // Note: Default implementation doesn't load cache automatically
         // Call init() separately for async initialization
-        db
+        Self::new(Self::default_path().unwrap_or_else(|_| PathBuf::from("safebrowsing.redb")))
+            .expect("Failed to create default RedbDatabase")
     }
 }
 

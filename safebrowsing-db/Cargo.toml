@@ -9,6 +9,12 @@ repository.workspace = true
 keywords.workspace = true
 categories.workspace = true
 
+[features]
+default = ["concurrent-db"]
+redb = ["dep:redb", "dep:dirs"]
+memory-db = []
+concurrent-db = ["memory-db"]
+
 [dependencies]
 tokio.workspace = true
 async-trait.workspace = true
@@ -24,6 +30,8 @@ safebrowsing-api.workspace = true
 flate2.workspace = true
 rand.workspace = true
 hex = "0.4"
+redb = { version = "2.1", optional = true }
+dirs = { version = "5.0", optional = true }
 
 [dev-dependencies]
 tokio-test.workspace = true

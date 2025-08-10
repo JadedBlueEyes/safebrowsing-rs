@@ -11,7 +11,7 @@ categories.workspace = true
 
 [features]
 default = []
-redb = ["dep:safebrowsing-db-redb"]
+redb = ["safebrowsing-db/redb"]
 
 [dependencies]
 tokio.workspace = true
@@ -26,9 +26,6 @@ safebrowsing-db.workspace = true
 safebrowsing-hash.workspace = true
 safebrowsing-proto.workspace = true
 safebrowsing-url.workspace = true
-
-# Optional redb backend
-safebrowsing-db-redb = { workspace = true, optional = true }
 
 # External dependencies required by this crate
 bytes = "1"

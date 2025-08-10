@@ -84,7 +84,9 @@ pub use crate::error::{Error, Result};
 pub use safebrowsing_api::{
     PlatformType, SafeBrowsingApi, ThreatDescriptor, ThreatEntryType, ThreatType, URLThreat,
 };
-pub use safebrowsing_db::{ConcurrentDatabase, Database, DatabaseStats, InMemoryDatabase};
+pub use safebrowsing_db::{
+    concurrent_db::ConcurrentDatabase, memory_db::InMemoryDatabase, Database, DatabaseStats,
+};
 pub use safebrowsing_hash::{HashPrefix, HashSet};
 pub use safebrowsing_url::{canonicalize_url, generate_patterns, validate_url};
 

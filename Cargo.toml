@@ -4,7 +4,6 @@ members = [
     "safebrowsing",
     "safebrowsing-api",
     "safebrowsing-db",
-    "safebrowsing-db-redb",
     "safebrowsing-hash",
     "safebrowsing-proto",
     "safebrowsing-url",
@@ -46,7 +45,6 @@ clap = { version = "4.4", features = ["derive"] }
 # Internal workspace dependencies
 safebrowsing-api = { path = "safebrowsing-api", version = "0.1.0" }
 safebrowsing-db = { path = "safebrowsing-db", version = "0.1.0" }
-safebrowsing-db-redb = { path = "safebrowsing-db-redb", version = "0.1.0" }
 safebrowsing-hash = { path = "safebrowsing-hash", version = "0.1.0" }
 safebrowsing-proto = { path = "safebrowsing-proto", version = "0.1.0" }
 safebrowsing-url = { path = "safebrowsing-url", version = "0.1.0" }
