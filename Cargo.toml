@@ -15,6 +15,7 @@ members = [
 version = "0.1.0"
 authors = ["Jade <jade@ellis.link>"]
 edition = "2021"
+rust-version = "1.89"
 license = "MIT OR Apache-2.0"
 description = "Rust implementation of Google Safe Browsing Update API (v4)"
 repository = "https://github.com/JadedBlueEyes/safebrowsing-rs"

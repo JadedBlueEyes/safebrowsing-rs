@@ -3,41 +3,52 @@
     naersk.url = "github:nix-community/naersk/master";
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     utils.url = "github:numtide/flake-utils";
+    nixpkgs-mozilla = {
+      url = "github:mozilla/nixpkgs-mozilla";
+      flake = false;
+    };
   };
 
-  outputs = { self, nixpkgs, utils, naersk }:
-    utils.lib.eachDefaultSystem (system:
-      let
-        pkgs = import nixpkgs { inherit system; };
-        naersk-lib = pkgs.callPackage naersk { };
+  outputs = {
+    self,
+    nixpkgs,
+    utils,
+    naersk,
+    nixpkgs-mozilla,
+  }:
+    utils.lib.eachDefaultSystem (
+      system: let
+        pkgs = import nixpkgs {
+          inherit system;
+          overlays = [(import nixpkgs-mozilla)];
+        };
+        toolchain =
+          (pkgs.rustChannelOf {
+            rustToolchain = ./rust-toolchain.toml;
+            sha256 = "sha256-+9FmLhAOezBZCOziO0Qct1NOrfpjNsXxc/8I0c7BdKE="; # Update on toolchain change
+          }).rust;
+        naersk-lib = pkgs.callPackage naersk {
+          cargo = toolchain;
+          rustc = toolchain;
+        };
         buildInputs = with pkgs; [
           protobuf
+          toolchain
         ];
         nativeBuildInputs = with pkgs; [
-          # openssl setup
           openssl
           pkg-config
         ];
-      in
-      {
+      in {
         defaultPackage = naersk-lib.buildPackage {
           src = ./.;
-
           buildInputs = buildInputs;
           nativeBuildInputs = nativeBuildInputs;
         };
-        devShell = with pkgs; mkShell {
-          buildInputs = [
-            cargo
-            rustc
-            rustfmt
-            pre-commit
-            rustPackages.clippy
-          ] ++ buildInputs;
-
+        devShell = pkgs.mkShell {
+          buildInputs = buildInputs;
           nativeBuildInputs = nativeBuildInputs;
-
-          RUST_SRC_PATH = rustPlatform.rustLibSrc;
+          RUST_SRC_PATH = pkgs.rustPlatform.rustLibSrc;
         };
       }
     );

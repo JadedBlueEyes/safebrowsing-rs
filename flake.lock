@@ -58,13 +58,29 @@
         "type": "github"
       }
     },
+    "nixpkgs-mozilla": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1744624473,
+        "narHash": "sha256-S6zT/w5SyAkJ//dYdjbrXgm+6Vkd/k7qqUl4WgZ6jjk=",
+        "owner": "mozilla",
+        "repo": "nixpkgs-mozilla",
+        "rev": "2292d4b35aa854e312ad2e95c4bb5c293656f21a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "mozilla",
+        "repo": "nixpkgs-mozilla",
+        "type": "github"
+      }
+    },
     "nixpkgs_2": {
       "locked": {
-        "lastModified": 1754711617,
-        "narHash": "sha256-WrZ280bT6NzNbBo+CKeJA/NW1rhvN/RUPZczqCpu2mI=",
+        "lastModified": 1754800730,
+        "narHash": "sha256-HfVZCXic9XLBgybP0318ym3cDnGwBs/+H5MgxFVYF4I=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "00b574b1ba8a352f0601c4dde4faff4b534ebb1e",
+        "rev": "641d909c4a7538f1539da9240dedb1755c907e40",
         "type": "github"
       },
       "original": {
@@ -78,6 +94,7 @@
       "inputs": {
         "naersk": "naersk",
         "nixpkgs": "nixpkgs_2",
+        "nixpkgs-mozilla": "nixpkgs-mozilla",
         "utils": "utils"
       }
     },
