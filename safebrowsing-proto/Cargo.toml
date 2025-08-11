@@ -15,4 +15,4 @@ prost-types.workspace = true
 bytes.workspace = true
 
 [build-dependencies]
-prost-build = "0.12"
+prost-build = "0.14"

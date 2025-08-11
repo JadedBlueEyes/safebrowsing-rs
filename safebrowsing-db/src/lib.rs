@@ -13,8 +13,6 @@ pub mod redb;
 
 use async_trait::async_trait;
 
-#[cfg(feature = "redb")]
-use ::redb::UpgradeError;
 use safebrowsing_api::{SafeBrowsingApi, ThreatDescriptor};
 
 use safebrowsing_hash::{HashPrefix, HashPrefixSet};
@@ -71,10 +69,6 @@ pub enum DatabaseError {
     /// Hash error
     #[error("Hash error: {0}")]
     HashError(#[from] safebrowsing_hash::HashError),
-    // ReDB upgrade error
-    #[cfg(feature = "redb")]
-    #[error("ReDB upgrade error: {0}")]
-    UpgradeError(#[from] UpgradeError),
 }
 
 /// Database statistics

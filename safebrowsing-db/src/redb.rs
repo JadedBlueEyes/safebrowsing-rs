@@ -6,7 +6,7 @@
 
 use crate::{Database, DatabaseError, DatabaseStats};
 use async_trait::async_trait;
-use redb::{Database as RedbDb, ReadableTable, TableDefinition};
+use redb::{Database as RedbDb, ReadableDatabase, ReadableTable, TableDefinition};
 use safebrowsing_api::{SafeBrowsingApi, ThreatDescriptor};
 use safebrowsing_hash::{HashPrefix, HashPrefixSet};
 use safebrowsing_proto::{CompressionType, RiceDeltaEncoding};
@@ -98,19 +98,14 @@ impl RedbDatabase {
 
         let db = if path.exists() {
             info!("Opening existing database at {:?}", path);
-            let mut db = RedbDb::open(&path).map_err(|e| {
+            RedbDb::open(&path).map_err(|e| {
                 DatabaseError::DecodeError(format!("Failed to open existing database: {e}"))
-            })?;
-            db.upgrade()?;
-            db
+            })?
         } else {
             info!("Creating new database at {:?}", path);
-            RedbDb::builder()
-                .create_with_file_format_v3(true)
-                .create(&path)
-                .map_err(|e| {
-                    DatabaseError::DecodeError(format!("Failed to create new database: {e}"))
-                })?
+            RedbDb::create(&path).map_err(|e| {
+                DatabaseError::DecodeError(format!("Failed to create new database: {e}"))
+            })?
         };
 
         // Initialize tables

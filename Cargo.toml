@@ -23,23 +23,23 @@ categories = ["api-bindings", "web-programming"]
 
 [workspace.dependencies]
 tokio = { version = "1.0", features = ["full"] }
-reqwest = { version = "0.11", features = ["json", "gzip"] }
+reqwest = { version = "0.12", features = ["json", "gzip"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-thiserror = "1.0"
+thiserror = "2.0"
 tracing = "0.1"
 tracing-subscriber = "0.3"
 sha2 = "0.10"
 url = "2.5"
-prost = "0.12"
-prost-types = "0.12"
+prost = "0.14"
+prost-types = "0.14"
 bytes = "1.5"
 async-trait = "0.1"
-dashmap = "5.5"
+dashmap = "6.1"
 regex = "1.10"
-idna = "0.5"
+idna = "1.0"
 flate2 = "1.0"
-rand = "0.8"
+rand = "0.9"
 clap = { version = "4.4", features = ["derive"] }
 
 # Internal workspace dependencies
