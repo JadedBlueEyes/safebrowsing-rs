@@ -1,8 +1,8 @@
 [2m[TIME][0m [32m INFO[0m [2msblookup[0m[2m:[0m Initializing Safe Browser...
-[2m[TIME][0m [32m INFO[0m [2msafebrowsing_db_redb[0m[2m:[0m Creating RedbDatabase at "[DATABASE]"
-[2m[TIME][0m [32m INFO[0m [2msafebrowsing_db_redb[0m[2m:[0m Creating new database at "[DATABASE]"
-[2m[TIME][0m [32m INFO[0m [2msafebrowsing_db_redb[0m[2m:[0m Initializing RedbDatabase at "[DATABASE]"
-[2m[TIME][0m [32m INFO[0m [2msafebrowsing_db_redb[0m[2m:[0m RedbDatabase initialization completed
+[2m[TIME][0m [32m INFO[0m [2msafebrowsing_db::redb[0m[2m:[0m Creating RedbDatabase at "[DATABASE]"
+[2m[TIME][0m [32m INFO[0m [2msafebrowsing_db::redb[0m[2m:[0m Creating new database at "[DATABASE]"
+[2m[TIME][0m [32m INFO[0m [2msafebrowsing_db::redb[0m[2m:[0m Initializing RedbDatabase at "[DATABASE]"
+[2m[TIME][0m [32m INFO[0m [2msafebrowsing_db::redb[0m[2m:[0m RedbDatabase initialization completed
 [2m[TIME][0m [32m INFO[0m [2msblookup[0m[2m:[0m SafeBrowser::new completed in[DURATION][2m[TIME][0m [32m INFO[0m [2msblookup[0m[2m:[0m Waiting for database to be ready...
 [2m[TIME][0m [32m INFO[0m [2msafebrowsing[0m[2m:[0m Database update completed successfully
 [2m[TIME][0m [32m INFO[0m [2msblookup[0m[2m:[0m wait_until_ready completed in[DURATION][2m[TIME][0m [32m INFO[0m [2msblookup[0m[2m:[0m Safe Browser ready, starting URL checks
